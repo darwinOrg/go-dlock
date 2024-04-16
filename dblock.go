@@ -67,12 +67,12 @@ func (l *DbLocker) update(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 		matcher.Eq(shedlockFields.Name, name)
 		matcher.Lte(shedlockFields.LockUntil, now)
 
-		_, err := l.dao.UpdateByModifier(tc, modifier, matcher)
+		cnt, err := l.dao.UpdateByModifier(tc, modifier, matcher)
 		if err != nil {
 			return false, err
 		}
 
-		return true, nil
+		return cnt > 0, nil
 	})
 
 	return result
@@ -90,13 +90,13 @@ func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
 		matcher.Eq(shedlockFields.Name, name)
 		matcher.Gt(shedlockFields.LockUntil, now)
 
-		_, err := l.dao.UpdateByModifier(tc, modifier, matcher)
+		cnt, err := l.dao.UpdateByModifier(tc, modifier, matcher)
 		if err != nil {
 			dglogger.Errorln(ctx, err)
 			return false, err
 		}
 
-		return true, nil
+		return cnt > 0, nil
 	})
 
 	return result
@@ -109,13 +109,13 @@ func (l *DbLocker) DeLock(ctx *dgctx.DgContext, name string) bool {
 		matcher := daog.NewMatcher()
 		matcher.Eq(shedlockFields.Name, name)
 
-		_, err := l.dao.DeleteByMatcher(tc, matcher)
+		cnt, err := l.dao.DeleteByMatcher(tc, matcher)
 		if err != nil {
 			dglogger.Errorln(ctx, err)
 			return false, err
 		}
 
-		return true, nil
+		return cnt > 0, nil
 	})
 
 	return result
