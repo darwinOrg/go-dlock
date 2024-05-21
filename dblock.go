@@ -1,10 +1,10 @@
 package dglock
 
 import (
+	daogext "github.com/darwinOrg/daog-ext"
 	dgctx "github.com/darwinOrg/go-common/context"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/rolandhe/daog"
-	txrequest "github.com/rolandhe/daog/tx"
 	"os"
 	"time"
 )
@@ -34,9 +34,7 @@ func (l *DbLocker) DoLock(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 }
 
 func (l *DbLocker) insert(ctx *dgctx.DgContext, name string, lockMilli int64) bool {
-	result, _ := daog.AutoTransWithResult[bool](func() (*daog.TransContext, error) {
-		return daog.NewTransContext(l.db, txrequest.RequestWrite, ctx.TraceId)
-	}, func(tc *daog.TransContext) (bool, error) {
+	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		_, err := l.dao.Insert(tc, &Shedlock{
 			Name:      name,
 			LockUntil: time.Now().Add(time.Duration(lockMilli) * time.Millisecond),
@@ -54,9 +52,7 @@ func (l *DbLocker) insert(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 }
 
 func (l *DbLocker) update(ctx *dgctx.DgContext, name string, lockMilli int64) bool {
-	result, _ := daog.AutoTransWithResult[bool](func() (*daog.TransContext, error) {
-		return daog.NewTransContext(l.db, txrequest.RequestWrite, ctx.TraceId)
-	}, func(tc *daog.TransContext) (bool, error) {
+	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		now := time.Now()
 		modifier := daog.NewModifier()
 		modifier.Add(shedlockFields.LockedAt, now)
@@ -79,9 +75,7 @@ func (l *DbLocker) update(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 }
 
 func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
-	result, _ := daog.AutoTransWithResult[bool](func() (*daog.TransContext, error) {
-		return daog.NewTransContext(l.db, txrequest.RequestWrite, ctx.TraceId)
-	}, func(tc *daog.TransContext) (bool, error) {
+	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		now := time.Now()
 		modifier := daog.NewModifier()
 		modifier.Add(shedlockFields.LockUntil, now)
@@ -103,9 +97,7 @@ func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
 }
 
 func (l *DbLocker) DeLock(ctx *dgctx.DgContext, name string) bool {
-	result, _ := daog.AutoTransWithResult[bool](func() (*daog.TransContext, error) {
-		return daog.NewTransContext(l.db, txrequest.RequestWrite, ctx.TraceId)
-	}, func(tc *daog.TransContext) (bool, error) {
+	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		matcher := daog.NewMatcher()
 		matcher.Eq(shedlockFields.Name, name)
 
