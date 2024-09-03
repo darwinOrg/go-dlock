@@ -35,6 +35,7 @@ func (l *DbLocker) DoLock(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 
 func (l *DbLocker) insert(ctx *dgctx.DgContext, name string, lockMilli int64) bool {
 	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
+		tc.LogSQL = false
 		_, err := l.dao.Insert(tc, &Shedlock{
 			Name:      name,
 			LockUntil: time.Now().Add(time.Duration(lockMilli) * time.Millisecond),
@@ -63,6 +64,7 @@ func (l *DbLocker) update(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 		matcher.Eq(shedlockFields.Name, name)
 		matcher.Lte(shedlockFields.LockUntil, now)
 
+		tc.LogSQL = false
 		cnt, err := l.dao.UpdateByModifier(tc, modifier, matcher)
 		if err != nil {
 			return false, err
@@ -84,6 +86,7 @@ func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
 		matcher.Eq(shedlockFields.Name, name)
 		matcher.Gt(shedlockFields.LockUntil, now)
 
+		tc.LogSQL = false
 		cnt, err := l.dao.UpdateByModifier(tc, modifier, matcher)
 		if err != nil {
 			dglogger.Errorln(ctx, err)
@@ -101,6 +104,7 @@ func (l *DbLocker) DeLock(ctx *dgctx.DgContext, name string) bool {
 		matcher := daog.NewMatcher()
 		matcher.Eq(shedlockFields.Name, name)
 
+		tc.LogSQL = false
 		cnt, err := l.dao.DeleteByMatcher(tc, matcher)
 		if err != nil {
 			dglogger.Errorln(ctx, err)
