@@ -50,12 +50,8 @@ func (l *DbLocker) DoLock(ctx *dgctx.DgContext, name string, lockMilli int64) bo
 
 func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
 	now := time.Now()
-	modifier := daog.NewModifier()
-	modifier.Add(shedlockFields.LockUntil, now)
-
-	matcher := daog.NewMatcher()
-	matcher.Eq(shedlockFields.Name, name)
-	matcher.Gt(shedlockFields.LockUntil, now)
+	modifier := daog.NewModifier().Add(shedlockFields.LockUntil, now)
+	matcher := daog.NewMatcher().Eq(shedlockFields.Name, name).Gt(shedlockFields.LockUntil, now)
 
 	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		tc.LogSQL = false
@@ -72,8 +68,7 @@ func (l *DbLocker) Unlock(ctx *dgctx.DgContext, name string) bool {
 }
 
 func (l *DbLocker) DeLock(ctx *dgctx.DgContext, name string) bool {
-	matcher := daog.NewMatcher()
-	matcher.Eq(shedlockFields.Name, name)
+	matcher := daog.NewMatcher().Eq(shedlockFields.Name, name)
 
 	result, _ := daogext.WriteWithResult(ctx, func(tc *daog.TransContext) (bool, error) {
 		tc.LogSQL = false
@@ -133,14 +128,14 @@ func (l *DbLocker) insert(tc *daog.TransContext, name string, lockMilli int64) b
 
 func (l *DbLocker) update(ctx *dgctx.DgContext, tc *daog.TransContext, name string, lockMilli int64) bool {
 	now := time.Now()
-	modifier := daog.NewModifier()
-	modifier.Add(shedlockFields.LockedAt, now)
-	modifier.Add(shedlockFields.LockedBy, dgsys.GetHostName())
-	modifier.Add(shedlockFields.LockUntil, now.Add(time.Duration(lockMilli)*time.Millisecond))
-
-	matcher := daog.NewMatcher()
-	matcher.Eq(shedlockFields.Name, name)
-	matcher.Lte(shedlockFields.LockUntil, now)
+	modifier := daog.NewModifier().
+		Add(shedlockFields.LockedAt, now).
+		Add(shedlockFields.LockedBy, dgsys.GetHostName()).
+		Add(shedlockFields.LockUntil, now.
+			Add(time.Duration(lockMilli)*time.Millisecond))
+	matcher := daog.NewMatcher().
+		Eq(shedlockFields.Name, name).
+		Lte(shedlockFields.LockUntil, now)
 
 	tc.LogSQL = false
 	cnt, err := l.dao.UpdateByModifier(tc, modifier, matcher)
