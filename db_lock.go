@@ -1,13 +1,14 @@
 package dglock
 
 import (
+	"time"
+
 	daogext "github.com/darwinOrg/daog-ext"
 	dgctx "github.com/darwinOrg/go-common/context"
 	dgsys "github.com/darwinOrg/go-common/sys"
 	"github.com/darwinOrg/go-common/utils"
 	dglogger "github.com/darwinOrg/go-logger"
 	"github.com/rolandhe/daog"
-	"time"
 )
 
 type shedlock struct {
@@ -20,6 +21,10 @@ type shedlock struct {
 type DbLocker struct {
 	db  daog.Datasource
 	dao daog.QuickDao[shedlock]
+}
+
+func DefaultDbLocker() *DbLocker {
+	return NewDbLocker(daogext.GetDatasource())
 }
 
 func NewDbLocker(db daog.Datasource) *DbLocker {
@@ -86,20 +91,20 @@ func (l *DbLocker) DeLock(ctx *dgctx.DgContext, name string) bool {
 
 func (l *DbLocker) OnceLock(ctx *dgctx.DgContext, name string, lockMilli int64, action func()) bool {
 	if !l.DoLock(ctx, name, lockMilli) {
-		dglogger.Errorf(ctx, "once do lock fail: %s, %d", name, lockMilli)
+		dglogger.Errorf(ctx, "shedlock once do lock fail: %s, %d", name, lockMilli)
 		return false
 	}
 
 	defer func() {
 		if !l.DeLock(ctx, name) {
-			dglogger.Errorf(ctx, "once de lock fail: %s, %d", name, lockMilli)
+			dglogger.Errorf(ctx, "shedlock once de lock fail: %s, %d", name, lockMilli)
 		}
 	}()
 
-	dglogger.Infof(ctx, "begin do action in lock section")
+	dglogger.Infof(ctx, "shedlock begin do action in lock section")
 	start := time.Now()
 	action()
-	dglogger.Infof(ctx, "finish do action in lock section, spend %s", time.Since(start))
+	dglogger.Infof(ctx, "shedlock finish do action in lock section, spend %s", time.Since(start))
 
 	return true
 }
